@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>活动详情 - 透明抽奖</title>
+  <link href="https://fonts.googleapis.com/css2?family=Lexend:wght@300;400;500;600;700&family=Noto+Sans+SC:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<header class="header">
+  <a href="index.html" class="header-logo">
+    <div class="logo-icon">◆</div>
+    <span>透明抽奖</span>
+  </a>
+  <nav class="header-nav">
+    <a href="index.html">活动</a>
+    <a href="verify.html">独立验证</a>
+  </nav>
+  <div class="header-actions" id="headerActions">
+    <a href="login.html" class="btn btn-ghost" style="color:rgba(255,255,255,.85)" id="btnLogin">登录</a>
+    <a href="login.html#register" class="btn btn-primary btn-sm" id="btnRegister">注册</a>
+    <div id="userMenu" style="display:none;display:flex;align-items:center;gap:12px;">
+      <a href="user.html" style="color:rgba(255,255,255,.85);font-size:.9375rem;" id="userNameDisplay"></a>
+      <button class="btn btn-ghost btn-sm" style="color:rgba(255,255,255,.7)" onclick="logout()">退出</button>
+    </div>
+  </div>
+</header>
+
+<div class="detail-hero">
+  <div class="container">
+    <div class="breadcrumb"><a href="index.html">首页</a> / <span id="breadcrumbName">活动详情</span></div>
+    <h1 id="activityTitle">新年抽奖活动</h1>
+  </div>
+</div>
+
+<div class="container">
+
+  <!-- 活动信息 -->
+  <div class="detail-info-grid" id="detailInfo"></div>
+
+  <!-- 报名按钮 -->
+  <div class="detail-section" id="registerSection" style="display:none;">
+    <button class="btn btn-primary btn-lg" id="btnRegister" onclick="handleRegister()">
+      ✋ 立即报名
+    </button>
+    <span style="margin-left:12px;font-size:.875rem;color:var(--color-text-secondary);" id="registerHint"></span>
+  </div>
+
+  <!-- 参与者列表 -->
+  <div class="detail-section">
+    <h2>参与者列表</h2>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>用户</th>
+            <th>链上地址</th>
+            <th>报名时间</th>
+          </tr>
+        </thead>
+        <tbody id="participantTable"></tbody>
+      </table>
+    </div>
+    <p class="text-muted text-sm" style="margin-top:8px;" id="participantCount"></p>
+  </div>
+
+  <!-- 中奖结果 -->
+  <div class="detail-section" id="winnerSection" style="display:none;">
+    <h2>中奖结果</h2>
+    <div class="winner-cards" id="winnerCards"></div>
+  </div>
+
+  <!-- 验证信息 -->
+  <div class="detail-section" id="verifySection" style="display:none;">
+    <h2>开奖验证信息</h2>
+    <div class="verify-box">
+      <h3>独立验证数据</h3>
+      <table>
+        <tbody>
+          <tr>
+            <td style="font-weight:600;">Seed</td>
+            <td><code id="verifySeed" class="font-mono"></code></td>
+            <td style="font-size:.8125rem;color:var(--color-text-muted);">上证×深证×10000 倒序</td>
+          </tr>
+          <tr>
+            <td style="font-weight:600;">上证指数</td>
+            <td id="verifyShanghai"></td>
+            <td></td>
+          </tr>
+          <tr>
+            <td style="font-weight:600;">深证成指</td>
+            <td id="verifyShenzhen"></td>
+            <td></td>
+          </tr>
+          <tr>
+            <td style="font-weight:600;">区块号</td>
+            <td id="verifyBlock" class="font-mono"></td>
+            <td></td>
+          </tr>
+          <tr>
+            <td style="font-weight:600;">区块时间戳</td>
+            <td id="verifyBlockTs" class="font-mono"></td>
+            <td></td>
+          </tr>
+          <tr>
+            <td style="font-weight:600;">交易 Hash</td>
+            <td id="verifyTx" class="font-mono"></td>
+            <td style="font-size:.8125rem;"><a href="#" target="_blank">在浏览器查看</a></td>
+          </tr>
+        </tbody>
+      </table>
+      <p style="margin-top:16px;font-size:.875rem;color:var(--color-text-secondary);">
+        你可以用上述 seed 结合合约公开的算法独立重算，验证中奖结果。
+        <a href="verify.html">了解如何验证 →</a>
+      </p>
+    </div>
+  </div>
+
+</div>
+
+<footer class="footer">
+  <div class="container">
+    <p>透明抽奖 &copy; 2026 — 基于以太坊区块链的公平抽奖平台</p>
+  </div>
+</footer>
+
+<script src="js/api.js"></script>
+<script src="js/app.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  initAuthState();
+  const params = new URLSearchParams(window.location.search);
+  const activityId = params.get('id') || '1';
+  renderActivityDetail(activityId);
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>独立验证 - 透明抽奖</title>
+  <link href="https://fonts.googleapis.com/css2?family=Lexend:wght@300;400;500;600;700&family=Noto+Sans+SC:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<header class="header">
+  <a href="index.html" class="header-logo">
+    <div class="logo-icon">◆</div>
+    <span>透明抽奖</span>
+  </a>
+  <nav class="header-nav">
+    <a href="index.html">活动</a>
+    <a href="verify.html" class="active">独立验证</a>
+  </nav>
+</header>
+
+<div class="container">
+  <div class="section" style="padding-top:48px;">
+    <div class="section-header">
+      <h2>独立验证抽奖结果</h2>
+      <p>不信任平台，自己动手验证。三步完成。</p>
+    </div>
+
+    <div class="feature-cards" style="margin-bottom:48px;">
+      <div class="feature-card">
+        <div class="feature-icon">1</div>
+        <h3>获取收盘价</h3>
+        <p>从公开渠道获取开奖日的上证指数和深证成指收盘价，独立计算 seed</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">2</div>
+        <h3>获取链上参数</h3>
+        <p>在区块链浏览器中查看 drawWinner 交易的 input data，提取 seed、blockNumber、blockTs</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">3</div>
+        <h3>重算比对</h3>
+        <p>用相同算法重新计算中奖结果，与链上记录比对，完全一致即为公正</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="detail-section">
+    <h2>Seed 计算公式</h2>
+    <div class="card" style="max-width:720px;margin-top:16px;">
+      <pre style="background:#f7fafc;padding:16px;border-radius:8px;font-family:var(--font-mono);font-size:.875rem;overflow-x:auto;">
+上证收盘指数 × 深证收盘指数 × 10000 = 12位整数 → 倒序排列 → seed
+
+示例：
+  上证 3200.15，深证 10800.50
+  → 3200.15 × 10800.50 × 10000
+  → 取整数部分（12位）
+  → 倒序
+  → seed</pre>
+    </div>
+  </div>
+
+  <div class="detail-section">
+    <h2>链上验证算法</h2>
+    <div class="card" style="max-width:720px;margin-top:16px;">
+      <pre style="background:#f7fafc;padding:16px;border-radius:8px;font-family:var(--font-mono);font-size:.875rem;overflow-x:auto;">
+// 第一个中奖者
+uint256(keccak256(abi.encodePacked(blockTs, blockNumber, seed))) % 参与人数
+
+// 后续中奖者
+uint256(keccak256(abi.encodePacked(前一中奖索引, blockTs, blockNumber, seed))) % 参与人数
+
+// 如果抽到已中奖者，自动顺延至下一个</pre>
+    </div>
+  </div>
+
+  <div class="detail-section">
+    <h2>验证工具（即将上线）</h2>
+    <div class="card" style="max-width:720px;margin-top:16px;">
+      <p class="text-secondary" style="margin-bottom:16px;">选择已开奖的活动，输入开奖日的上证/深证收盘价，自动重算并比对链上结果。</p>
+      <div class="form-group">
+        <label class="form-label">选择活动</label>
+        <select class="form-input" id="verifyActivity" onchange="showVerifyResult()">
+          <option value="">-- 选择一个已开奖的活动 --</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">上证指数收盘值</label>
+        <input class="form-input" type="number" id="inputShanghai" placeholder="如 3200.15" step="0.01" oninput="showVerifyResult()">
+      </div>
+      <div class="form-group">
+        <label class="form-label">深证成指收盘值</label>
+        <input class="form-input" type="number" id="inputShenzhen" placeholder="如 10800.50" step="0.01" oninput="showVerifyResult()">
+      </div>
+      <div id="verifyOutput" style="display:none;margin-top:20px;padding:20px;background:#f0fff4;border:1px solid #c6f6d5;border-radius:var(--radius-lg);"></div>
+    </div>
+  </div>
+</div>
+
+<footer class="footer">
+  <div class="container">
+    <p>透明抽奖 &copy; 2026 — 基于以太坊区块链的公平抽奖平台</p>
+  </div>
+</footer>
+
+<script src="js/api.js"></script>
+<script src="js/app.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  initAuthState();
+  const select = document.getElementById('verifyActivity');
+  const drawed = mockGetActivities().filter(a => a.status === 'drawed');
+  drawed.forEach(a => {
+    const opt = document.createElement('option');
+    opt.value = a.id;
+    opt.textContent = a.name;
+    select.appendChild(opt);
+  });
+});
+
+function showVerifyResult() {
+  const activityId = document.getElementById('verifyActivity').value;
+  const shanghai = parseFloat(document.getElementById('inputShanghai').value);
+  const shenzhen = parseFloat(document.getElementById('inputShenzhen').value);
+  const output = document.getElementById('verifyOutput');
+
+  if (!activityId || !shanghai || !shenzhen) {
+    output.style.display = 'none';
+    return;
+  }
+
+  const activity = mockGetActivities().find(a => a.id == activityId);
+  if (!activity || !activity.drawResult) return;
+
+  // Calculate seed
+  const raw = Math.floor(shanghai * shenzhen * 10000);
+  const seed = raw.toString().split('').reverse().join('').slice(0, 12);
+
+  // Compare with recorded seed
+  const match = seed === activity.drawResult.seed;
+
+  output.style.display = 'block';
+  output.innerHTML = `
+    <h4 style="margin-bottom:12px;">${match ? '✅ Seed 匹配！' : '❌ Seed 不匹配'}</h4>
+    <table>
+      <tbody>
+        <tr><td style="font-weight:600;">你计算的 seed</td><td><code class="font-mono">${seed}</code></td></tr>
+        <tr><td style="font-weight:600;">链上记录的 seed</td><td><code class="font-mono">${activity.drawResult.seed}</code></td></tr>
+        <tr><td style="font-weight:600;">上证 × 深证 原值</td><td>${raw}</td></tr>
+      </tbody>
+    </table>
+    <p style="margin-top:12px;font-size:.875rem;color:var(--color-text-secondary);">
+      ${match ? 'seed 与链上记录完全一致。用此 seed 和链上的 blockNumber、blockTs 重跑算法即可验证中奖结果。' : 'seed 不匹配，请检查输入的收盘价是否正确。'}
+    </p>
+  `;
+}
+</script>
+</body>
+</html>

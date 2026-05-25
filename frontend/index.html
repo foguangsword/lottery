@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>透明抽奖 - 区块链公平抽奖平台</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Lexend:wght@300;400;500;600;700&family=Noto+Sans+SC:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<header class="header">
+  <a href="index.html" class="header-logo">
+    <div class="logo-icon">◆</div>
+    <span>透明抽奖</span>
+  </a>
+  <nav class="header-nav">
+    <a href="index.html" class="active">活动</a>
+    <a href="verify.html">独立验证</a>
+  </nav>
+  <div class="header-actions" id="headerActions">
+    <a href="login.html" class="btn btn-ghost" style="color:rgba(255,255,255,.85)" id="btnLogin">登录</a>
+    <a href="login.html#register" class="btn btn-primary btn-sm" id="btnRegister">注册</a>
+    <div id="userMenu" style="display:none;display:flex;align-items:center;gap:12px;">
+      <a href="user.html" style="color:rgba(255,255,255,.85);font-size:.9375rem;" id="userNameDisplay"></a>
+      <button class="btn btn-ghost btn-sm" style="color:rgba(255,255,255,.7)" onclick="logout()">退出</button>
+    </div>
+  </div>
+</header>
+
+<section class="hero">
+  <div class="container">
+    <h1>区块链透明抽奖</h1>
+    <div class="gold-line"></div>
+    <p>所有报名记录上链存证，seed 来自上证/深证公开收盘价，算法公开，人人可验证。平台自证清白，没有暗箱。</p>
+    <a href="#activities" class="btn btn-primary btn-lg">查看活动</a>
+  </div>
+</section>
+
+<section class="section">
+  <div class="container">
+    <div class="trust-strip">
+      <div class="trust-item">
+        <div class="trust-icon">🔗</div>
+        <h4>链上存证</h4>
+        <p>报名记录上链，不可篡改</p>
+      </div>
+      <div class="trust-item">
+        <div class="trust-icon">📈</div>
+        <h4>公开随机源</h4>
+        <p>seed 来自上证/深证收盘价</p>
+      </div>
+      <div class="trust-item">
+        <div class="trust-icon">📐</div>
+        <h4>算法公开</h4>
+        <p>keccak256 确定性计算</p>
+      </div>
+      <div class="trust-item">
+        <div class="trust-icon">✅</div>
+        <h4>独立验证</h4>
+        <p>任何人可自行重算验证</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="section" id="activities" style="padding-top:0;">
+  <div class="container">
+    <div class="section-header">
+      <h2>抽奖活动</h2>
+      <p>选择感兴趣的活动参与，开奖后可在链上独立验证结果</p>
+    </div>
+
+    <div class="filter-tabs" id="filterTabs">
+      <button class="filter-tab active" data-filter="all">全部活动</button>
+      <button class="filter-tab" data-filter="active">进行中</button>
+      <button class="filter-tab" data-filter="drawed">已开奖</button>
+      <button class="filter-tab" data-filter="canceled">已取消</button>
+    </div>
+
+    <div class="activity-grid" id="activityGrid"></div>
+
+    <div class="pagination" id="pagination"></div>
+  </div>
+</section>
+
+<footer class="footer">
+  <div class="container">
+    <p>透明抽奖 &copy; 2026 — 基于以太坊区块链的公平抽奖平台</p>
+    <p style="margin-top:8px;">合约地址：<span class="font-mono">0x...</span> &nbsp;|&nbsp; <a href="#">GitHub</a></p>
+  </div>
+</footer>
+
+<script src="js/api.js"></script>
+<script src="js/app.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  initAuthState();
+  renderActivities('all');
+  document.querySelectorAll('.filter-tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+      document.querySelectorAll('.filter-tab').forEach(t => t.classList.remove('active'));
+      tab.classList.add('active');
+      renderActivities(tab.dataset.filter);
+    });
+  });
+});
+</script>
+</body>
+</html>
