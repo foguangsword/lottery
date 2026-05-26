@@ -1,0 +1,19 @@
+server:
+  port: 8080
+  mode: debug
+
+database:
+  host: localhost
+  port: 3306
+  username: root
+  password: ""
+  dbname: backend_db
+  charset: utf8mb4
+
+logger:
+  level: info
+  filename: logs/app.log
+
+blockchain:
+  rpc_url: "https://sepolia.infura.io/v3/YOUR_INFURA_KEY"
+  chain_id: 11155111

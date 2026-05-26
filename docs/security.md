@@ -38,14 +38,16 @@
 
 ### 按危害程度排序
 
-| 优先级 | 威胁 | 危害 | 场景 |
-|--------|------|------|------|
-| P0 | 合约 owner 私钥泄露 | 灾难级 | 服务器沦陷 / 代码泄露 / 日志泄露 |
-| P1 | MySQL 被拖库 | 严重 | SQL 注入 / 弱密码 / 端口暴露 |
-| P1 | API 未鉴权 | 严重 | 未登录可调用敏感接口 |
-| P2 | XSS / CSRF | 中等 | 窃取用户会话 / 伪造操作 |
-| P2 | DDoS | 中等 | 服务不可用 |
-| P3 | 合约随机数攻击 | 低 | seed 由外部公开数据源提供，攻击面极小 |
+| 优先级 | 威胁 | 危害 | 场景 | 当前状态 |
+|--------|------|------|------|----------|
+| P0 | 合约 owner 私钥泄露 | 灾难级 | 服务器沦陷 / 代码泄露 / 日志泄露 | 待接入 KMS |
+| P0 | **平台操控开奖区块参数** | 灾难级 | `drawWinner` 的 `blockNumber`/`blockTs` 由后端传入，平台可暴力搜索有利参数 | **✅ 已确认修复方案：改为链上读取** |
+| P1 | MySQL 被拖库 | 严重 | SQL 注入 / 弱密码 / 端口暴露 | 待加固 |
+| P1 | API 未鉴权 | 严重 | 未登录可调用敏感接口 | 待实现 JWT |
+| P2 | XSS / CSRF | 中等 | 窃取用户会话 / 伪造操作 | 待前端排查 |
+| P2 | DDoS | 中等 | 服务不可用 | SLB 基础防护 |
+| P2 | 报名阶段平台刷号 / 拒签 | 中等 | 后端代签模式下平台可控制链上报名名单 | **产品级 trade-off，需文档诚实声明** |
+| P3 | 合约随机数攻击 | 低 | seed 由外部公开数据源提供，不依赖区块随机性 | 攻击面极小 |
 
 ## 云基础设施安全（阿里云）
 
@@ -119,19 +121,40 @@ VPC: 192.168.0.0/16
 **待修复：**
 
 ```solidity
-// 1. triggerDraw() 残留代码 —— 删除或修复
-// 当前 drawWinner 直调即可，triggerDraw 是死代码
-
-// 2. drawWinner 增加 seed 事件，降低验证门槛
-event SeedPublished(string indexed activityName, string seed);
-
-function drawWinner(...) public payable onlyOwner returns (uint256[] memory) {
+// 1. drawWinner 区块参数改为链上读取（关键信任修复）
+// 当前 blockNumber 和 blockTs 由后端传入，平台可通过暴力搜索微调参数来操控中奖结果。
+// 修复方案：不再传入，直接使用 block.number 和 block.timestamp。
+function drawWinner(string memory activityName, string memory seed, uint256 nowtime)
+    public onlyOwner returns (uint256[] memory)
+{
+    uint256 blockNumber = block.number;
+    uint256 blockTs = block.timestamp;
     // ... existing logic ...
-    emit SeedPublished(activityName, seed);  // 新增
 }
 
-// 3. drawWinner 考虑增加 block.number 校验（可选，增强信任）
-// 当前 blockNumber 和 blockTs 由后端传入，可加入合理范围检查
+// 2. triggerDraw() 残留代码 —— 直接删除
+// 该函数将状态错误地设为 active（应为 drawing），且修改 startTime。
+// drawWinner 可直接在活动截止后调用，无需 triggerDraw 过渡。
+
+// 3. drawWinner 增加 seed 存储与事件，降低验证门槛
+string public activitySeed;  // 或 mapping(string => string)
+event WinnerDrawn(
+    string indexed activityName,
+    string seed,
+    uint256 blockNumber,
+    uint256 blockTs,
+    uint256[] winnerIndexs
+);
+
+// 4. participate 补上状态和时间校验
+modifier onlyActive(string memory activityName, uint256 nowtime) { ... }
+// 当前 participate 没有使用 onlyActive，导致任何时间都能报名。
+
+// 5. 移除 hardhat/console.sol 和多余的 payable
+// 生产部署前必须移除调试导入；不接收 ETH 的函数不应标记 payable。
+
+// 6. 修正状态名与拼写
+// drawed -> drawn；stutas -> status
 ```
 
 **不需要担心的：**
@@ -318,7 +341,7 @@ ufw enable
 FROM golang:1.22-alpine AS builder
 WORKDIR /app
 COPY . .
-RUN CGO_ENABLED=0 go build -o server ./cmd/server
+RUN CGO_ENABLED=0 go build -o server ./cmd/api
 
 FROM alpine:3.20
 RUN addgroup -S app && adduser -S app -G app
@@ -454,3 +477,12 @@ ECS 最小暴露面（安全组 + 非 root）
 ```
 
 这个系统的设计天然有一定安全优势：抽奖结果在链上，即使服务器被攻破，攻击者也只能破坏后续活动（换 owner），已开奖的结果不可篡改。安全工作的重心永远是 **保护好合约私钥**。
+
+### 信任边界声明
+
+本系统不是"完全去信任"的，它的保障是**分阶段**的：
+
+- **报名截止后 → 开奖完成**：这一阶段是密码学保障的。参与者名单上链锁定，seed 来自公开数据，开奖算法确定性执行，任何人可独立验证。
+- **报名阶段**：由于采用"后端代签、用户无钱包"模式，平台在理论上可以拒绝真实用户报名，也可以用自己的地址刷号增加中奖概率。这一阶段的公平性依赖平台的商业信誉和运营透明度，无法通过纯代码消除。
+
+**这是"无门槛参与"和"完全去信任"之间的必要 trade-off。** 如果未来产品定位转向高价值抽奖，应考虑引入 KYC、质押或灵魂绑定代币等身份层。

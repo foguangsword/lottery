@@ -11,11 +11,11 @@ const main = async () => {
     console.log("Contract deployed to: %s, owner: %s", contract.address, owner.address);
 
     //创建活动
-    let create = await contract.createActivity("activity1", new Date().getTime(), new Date().getTime() + 2000, 5);
+    let create = await contract.createActivity("activity1", new Date().getTime(), new Date().getTime() + 12000, 5);
     await create.wait();
     
     //报名
-    for(var i=0; i<2739; i++){
+    for(var i=0; i<273; i++){
       //const randomPerson = await hre.ethers.getSigners();
       const wallet = await hre.ethers.Wallet.createRandom();
       let baoming = await contract.participate("activity1", new Date().getTime(), wallet.address);
@@ -26,20 +26,25 @@ const main = async () => {
     
     
     //模拟报名结束后触发开奖
-    let blockTs = 1670061981603; //报名结束存证的时间戳
-    let blockNumber = 173637; //报名结束存证的块高
-    console.log("报名结束，时间戳：" , blockTs);
-    console.log("报名结束，块高：" , blockNumber);
+    //let blockTs = 1670061981603; //报名结束存证的时间戳
+    //let blockNumber = 173637; //报名结束存证的块高
+    //console.log("报名结束，时间戳：" , blockTs);
+    //console.log("报名结束，块高：" , blockNumber);
     
     //开奖
     let seed = "979202789523";
-    let drawWinner = await contract.drawWinner("activity1", seed, new Date().getTime(), blockNumber, blockTs);
-    await drawWinner.wait();
-    //console.log("中奖人", drawWinner);
-
-    //几个查询
+    let tx = await contract.drawWinner("activity1", seed, new Date().getTime());
+    let receipt = await tx.wait();
+    if(receipt.status === 1)
+      console.log("已开奖, 交易Hash: %s， 区块Hash: %s，区块高度: %s", receipt.transactionHash, receipt.blockHash, receipt.blockNumber);
+    else
+      console.log("开奖tx失败: %s", receipt);
     
-
+    //查询中奖人
+    let luckyIndex = await contract.luckyIndexOf("activity1");
+    console.log("中奖人索引：%s", luckyIndex);
+    let luckyAddress = await contract.luckyOf("activity1");
+    console.log("中奖人地址：%s", luckyAddress);
   };
   
   const runMain = async () => {
