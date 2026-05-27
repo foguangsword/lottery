@@ -11,7 +11,6 @@ import (
 	"backend/internal/blockchain"
 	"backend/internal/config"
 	"backend/internal/handler"
-	"backend/internal/model"
 	"backend/internal/repository"
 	"backend/internal/router"
 	"backend/internal/scheduler"
@@ -37,15 +36,16 @@ func main() {
 
 	logger.Log.Info("server starting...")
 
-	// 3. 初始化数据库（连接失败时不退出，方便无 DB 环境测试）
+	// 3. 初始化数据库
 	if err := db.Init(cfg.Database.DSN()); err != nil {
-		logger.Log.Warn("database init failed, continuing without db", zap.Error(err))
+		//logger.Log.Warn("database init failed, continuing without db", zap.Error(err))
+		logger.Log.Fatal("database init failed", zap.Error(err))
 	} else {
-		if err := db.DB.AutoMigrate(&model.User{}); err != nil {
-			logger.Log.Warn("auto migrate failed", zap.Error(err))
-		} else {
-			logger.Log.Info("database connected and migrated")
-		}
+		//if err := db.DB.AutoMigrate(&model.User{}); err != nil {
+		//logger.Log.Warn("auto migrate failed", zap.Error(err))
+		//} else {
+		logger.Log.Info("database connected")
+		//}
 	}
 
 	// 4. 初始化区块链客户端（如果没有配置 RPC URL，可以跳过）

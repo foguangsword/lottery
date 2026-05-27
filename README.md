@@ -153,7 +153,7 @@ stateDiagram-v2
 | `statusOf` | 任意 | 查询活动当前状态 |
 | `cancelActivity` | owner | 取消活动 |
 
-> **状态说明**：`drawn` 为开奖完成状态（README 早期版本误写为 `drawed`，已修正）。合约代码中同步修正为 `drawn`。
+
 
 **随机算法：**
 - 首个中奖者：`keccak256(blockTs, blockNumber, seed) % 参与人数`

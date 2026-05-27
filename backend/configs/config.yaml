@@ -5,9 +5,9 @@ server:
 database:
   host: localhost
   port: 3306
-  username: root
-  password: ""
-  dbname: backend_db
+  username: lottery
+  password: lottery123
+  dbname: lottery_db
   charset: utf8mb4
 
 logger:

@@ -39,7 +39,6 @@ contract MyLuckyDraw is Ownable {
     enum Status {
         created,
         active,
-        drawing,
         drawn,
         canceled
     }
@@ -54,13 +53,16 @@ contract MyLuckyDraw is Ownable {
         uint256 luckyCount;  //规定本次活动几个中奖人
         address[] participants; //参加报名人的集合
         uint256[] winnerIndexs; //中奖人的报名序号
+        string seed;
     }
 
     //活动数量
     uint256 drawNumber;
 
+    uint256 constant NO_PREVIOUS_WINNER = type(uint256).max;
+
     //活动名 -> 活动
-    mapping(string => LuckyDraw) allDraws;
+    mapping(string => LuckyDraw) public allDraws;
 
     //活动id -> 用户 -> 是否中奖
     mapping(uint256 => mapping(address => bool)) winners;
@@ -70,31 +72,19 @@ contract MyLuckyDraw is Ownable {
 
     event CreateActivity(uint256 id, string indexed name, uint256 startTime, uint256 endTime, uint256 luckyCount);
     event Participate(string indexed activityName, address user, uint256 participateIndex);
+    event WinnerDrawn(uint256[] winnerIndex);
 
-    /*
-    constructor() {
-        owner = msg.sender;
-    }
-    */
 
-    modifier onlyActive(string memory activityName, uint256 nowtime) {
+    modifier onlyActive(string memory activityName) {
         LuckyDraw storage activity = allDraws[activityName];
+        //console.log("blockTs: %u, startTime: %u, endTime: %u", block.timestamp, activity.startTime, activity.endTime);
         require(bytes(activity.name).length != 0, "Activity is not exist!");
         require(activity.status == Status.active, "Activity is not active!");
-        require(nowtime >= activity.startTime, "Activity has not started!");
-        require(nowtime < activity.endTime, "Activity has ended!");
+        require(block.timestamp >= activity.startTime, "Activity has not started!");
+        require(block.timestamp < activity.endTime, "Activity has ended!");
         _;
     }
 
-    modifier onlyDrawing(string memory activityName) {
-        LuckyDraw storage activity = allDraws[activityName];
-        require(bytes(activity.name).length != 0, "Activity is not exist!");
-        require(
-            activity.status == Status.drawing,
-            "Activity is not at drawing stutas!"
-        );
-        _;
-    }
 
     /**核心算法
      * 第一个中奖者：keccak256（出块时间+块高+随机种子）得到一个hash，然后将hash转uint256，再对参加人数取模
@@ -108,7 +98,7 @@ contract MyLuckyDraw is Ownable {
         uint256 blocTs
     ) private pure returns (uint256) {
         //console.log("seed is", seed);
-        if (preLuckIndex == 9999999999) {
+        if (preLuckIndex == NO_PREVIOUS_WINNER) {
             //console.log( keccak256(abi.encodePacked(blocTs, blockNumber, seed)) );
             //console.log("keccak256 hash int value: ", uint256( keccak256(abi.encodePacked(blocTs, blockNumber, seed)) ));
             return uint256( keccak256(abi.encodePacked(blocTs, blockNumber, seed)) ) % number;
@@ -147,12 +137,12 @@ contract MyLuckyDraw is Ownable {
 
     /**
      * 报名
+     * participants里存的是从1开始的序号，返回的是从0开始的。为的是participants[user][activity.id] == 0判定
      */
     function participate(
         string memory activityName,
-        uint256 nowtime,
         address user
-    ) public onlyOwner onlyActive(activityName, nowtime) returns(uint256) {
+    ) public onlyOwner onlyActive(activityName) returns(uint256) {
         LuckyDraw storage activity = allDraws[activityName];
         require(
             participants[user][activity.id] == 0,
@@ -161,11 +151,11 @@ contract MyLuckyDraw is Ownable {
         activity.participants.push(user);
         
         participants[user][activity.id] = activity.participants.length;
-        console.log("activity id :", activity.id);
-        console.log("baoming No. :", activity.participants.length - 1);
+        //console.log("activity id :", activity.id);
+        //console.log("baoming No. :", activity.participants.length - 1);
         emit Participate(activityName, user, activity.participants.length - 1);
         return activity.participants.length - 1;
-    } //participants里存的是从1开始的序号，返回的是从0开始的。好像为的是participants[user][activity.id] == 0判定
+    }
 
 
     /**
@@ -173,19 +163,19 @@ contract MyLuckyDraw is Ownable {
      */
     function drawWinner(
         string memory activityName,
-        string memory seed,
-        uint256 nowtime
-    ) public onlyOwner returns (uint256[] memory) {
+        string memory seed
+    ) public onlyOwner {
         LuckyDraw storage activity = allDraws[activityName];
         require(bytes(activity.name).length != 0, "Activity is not exist!");
-        //require(nowtime >= activity.endTime, "Activity has not ended!");
+        require(block.timestamp >= activity.endTime, "Activity has not ended!");
         require(activity.status == Status.active, "Activity is not active!");
         activity.status = Status.drawn;
+        activity.seed = seed;
         uint256 luckyCount = activity.luckyCount;   //一共多少个中奖
         uint256 totalPartCount = activity.participants.length; //多少个参加者
-        //require(luckyCount <= totalPartCount);
+        require(luckyCount <= totalPartCount, "luckyCount <= totalPartCount");
         uint256[] storage winnerIndexs = activity.winnerIndexs;
-        uint256 preLuckyIndex = 9999999999;
+        uint256 preLuckyIndex = NO_PREVIOUS_WINNER;
         for (uint256 i = 0; i < luckyCount && i < totalPartCount; i++) {
             console.log("draw seed is:" , seed);
             uint256 luckyIndex = random2(preLuckyIndex, totalPartCount, seed, block.number, block.timestamp);
@@ -209,8 +199,7 @@ contract MyLuckyDraw is Ownable {
         for(uint256 i=0; i<winnerIndexs.length; i++) {
             console.log(winnerIndexs[i]);
         }
-
-        return winnerIndexs;
+        emit WinnerDrawn(winnerIndexs);
     }
 
     //多个中奖者的情况，如果抽到了已经中奖的人，那么顺延一个，有小概率出现连号的情况
@@ -220,19 +209,11 @@ contract MyLuckyDraw is Ownable {
         uint256 luckyIndex,
         uint256 totalPartCount
     ) private view returns (uint256) {
-        luckyIndex++;
-        if (luckyIndex >= totalPartCount) {
-            luckyIndex = 0;
+        uint256 idx = (luckyIndex + 1) % totalPartCount;
+        while (winners[activityId][activityParts[idx]]) {
+            idx = (idx + 1) % totalPartCount;
         }
-        if (winners[activityId][activityParts[luckyIndex]]) {
-            luckyIndex = nextLuckyOne(
-                activityId,
-                activityParts,
-                luckyIndex,
-                totalPartCount
-            );
-        }
-        return luckyIndex;
+        return idx;
     }
 
     /**
@@ -260,7 +241,7 @@ contract MyLuckyDraw is Ownable {
         LuckyDraw storage activity = allDraws[activityName];
         require(bytes(activity.name).length != 0, "Activity is not exist!");
         require(activity.status == Status.drawn, "Activity is not finished!");
-        address[] memory luckyAddresses = new address[](activity.luckyCount);
+        address[] memory luckyAddresses = new address[](activity.winnerIndexs.length);
         for (uint256 i = 0; i < activity.winnerIndexs.length; i++) {
             luckyAddresses[i] = activity.participants[activity.winnerIndexs[i]];
         }
