@@ -11,6 +11,14 @@ npm install
 
 #### 编译与测试
 
+注：需要先在blockchain目录新建`.env`文件：
+
+```
+GANACHE_SK0=0x246e67632d737fce9358b4eb13911d9e11b311159e1f349b92c24e09224a3d36
+```
+
+否则会编译失败。注意：上面私钥是Ganache随机生成的，请根据实际情况进行替换。
+
 ```bash
 npx hardhat compile
 npx hardhat run .\scripts\run.js
