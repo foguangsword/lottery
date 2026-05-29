@@ -71,10 +71,10 @@ func main() {
 	// 6. 组装三层：repo -> service -> handler
 	userRepo := repository.NewUserRepository()
 	userService := service.NewUserService(userRepo)
-	userHandler := handler.NewUserHandler(userService)
+	userHandler := handler.NewUserHandler(userService, cfg.Jwt.Secret)
 
 	// 7. 注册路由并启动 HTTP 服务
-	r := router.Setup(userHandler)
+	r := router.Setup(userHandler, cfg.Jwt.Secret)
 
 	port := cfg.Server.Port
 	if port == "" {

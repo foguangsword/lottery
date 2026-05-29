@@ -11,17 +11,19 @@ import (
 )
 
 type UserHandler struct {
-	service *service.UserService
+	service   *service.UserService
+	jwtSecret string
 }
 
-func NewUserHandler(service *service.UserService) *UserHandler {
-	return &UserHandler{service: service}
+func NewUserHandler(service *service.UserService, secret string) *UserHandler {
+	return &UserHandler{service: service, jwtSecret: secret}
 }
 
 func (h *UserHandler) Create(c *gin.Context) {
 	var req struct {
 		Username string `json:"username" binding:"required"`
 		Email    string `json:"email" binding:"required,email"`
+		Password string `json:"password"`
 		Address  string `json:"address"`
 	}
 
@@ -30,13 +32,31 @@ func (h *UserHandler) Create(c *gin.Context) {
 		return
 	}
 
-	user, err := h.service.CreateUser(req.Username, req.Email, req.Address)
+	user, err := h.service.CreateUser(req.Username, req.Email, req.Password, req.Address)
 	if err != nil {
-		response.Error(c, 1001, err.Error())
+		response.BizError(c, 1001, err.Error())
 		return
 	}
 
 	response.Success(c, user)
+}
+
+func (h *UserHandler) Login(c *gin.Context) {
+	var req struct {
+		Username string `json:"username" binding:"required"`
+		Password string `json:"password" binding:"required"`
+	}
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.BadRequest(c, err.Error())
+		return
+	}
+	tokenStr, err := h.service.Login(req.Username, req.Password, h.jwtSecret)
+	if err != nil {
+		response.BizError(c, 1001, err.Error())
+		return
+	}
+	response.Success(c, gin.H{"token": tokenStr})
 }
 
 func (h *UserHandler) Get(c *gin.Context) {
@@ -48,7 +68,7 @@ func (h *UserHandler) Get(c *gin.Context) {
 
 	user, err := h.service.GetUser(uint(id))
 	if err != nil {
-		response.Error(c, 1002, err.Error())
+		response.BizError(c, 1002, err.Error())
 		return
 	}
 
@@ -58,7 +78,7 @@ func (h *UserHandler) Get(c *gin.Context) {
 func (h *UserHandler) List(c *gin.Context) {
 	users, err := h.service.ListUsers()
 	if err != nil {
-		response.Error(c, 1003, err.Error())
+		response.BizError(c, 1003, err.Error())
 		return
 	}
 
@@ -83,14 +103,14 @@ func (h *UserHandler) Update(c *gin.Context) {
 	}
 
 	user := &model.User{
-		Username: req.Username,
-		Email:    req.Email,
-		Address:  req.Address,
+		Username:   req.Username,
+		Email:      req.Email,
+		EthAddress: req.Address,
 	}
 	user.ID = uint(id)
 
 	if err := h.service.UpdateUser(user); err != nil {
-		response.Error(c, 1004, err.Error())
+		response.BizError(c, 1004, err.Error())
 		return
 	}
 
@@ -105,7 +125,7 @@ func (h *UserHandler) Delete(c *gin.Context) {
 	}
 
 	if err := h.service.DeleteUser(uint(id)); err != nil {
-		response.Error(c, 1005, err.Error())
+		response.BizError(c, 1005, err.Error())
 		return
 	}
 

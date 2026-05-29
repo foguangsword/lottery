@@ -5,8 +5,8 @@ server:
 database:
   host: localhost
   port: 3306
-  username: lottery
-  password: lottery123
+  username: root
+  password: 123456
   dbname: lottery_db
   charset: utf8mb4
 
@@ -17,3 +17,6 @@ logger:
 blockchain:
   rpc_url: "https://sepolia.infura.io/v3/YOUR_INFURA_KEY"
   chain_id: 11155111
+
+jwt:
+  secret: "your-32-char-long-secret-key-here"

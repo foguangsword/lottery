@@ -13,6 +13,7 @@ type Config struct {
 	Database   DatabaseConfig
 	Logger     LoggerConfig
 	Blockchain BlockchainConfig
+	Jwt        JwtConfig
 }
 
 type ServerConfig struct {
@@ -39,6 +40,10 @@ type BlockchainConfig struct {
 	ChainID int64  `mapstructure:"chain_id"`
 }
 
+type JwtConfig struct {
+	Secret string `mapstructure:"secret"`
+}
+
 func Load() (*Config, error) {
 	// 加载 .env 文件（开发环境）
 	_ = godotenv.Load()
@@ -60,6 +65,9 @@ func Load() (*Config, error) {
 	// 用环境变量覆写敏感信息
 	if dbPass := os.Getenv("DB_PASSWORD"); dbPass != "" {
 		cfg.Database.Password = dbPass
+	}
+	if secret := os.Getenv("JWT_SECRET"); secret != "" {
+		cfg.Jwt.Secret = secret
 	}
 
 	return &cfg, nil

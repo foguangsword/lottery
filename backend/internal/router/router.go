@@ -7,8 +7,10 @@ import (
 	"backend/internal/middleware"
 )
 
-func Setup(userHandler *handler.UserHandler) *gin.Engine {
+func Setup(userHandler *handler.UserHandler, jwtSecret string) *gin.Engine {
 	r := gin.New()
+
+	r.SetTrustedProxies(nil) //默认不信任任何代理
 
 	// 中间件
 	r.Use(middleware.Recovery())
@@ -25,9 +27,11 @@ func Setup(userHandler *handler.UserHandler) *gin.Engine {
 	{
 		api.POST("/users", userHandler.Create)
 		api.GET("/users", userHandler.List)
-		api.GET("/users/:id", userHandler.Get)
-		api.PUT("/users/:id", userHandler.Update)
+		api.GET("/users/:id", middleware.JWTAuth(jwtSecret), userHandler.Get)
+		api.PUT("/users/:id", middleware.JWTAuth(jwtSecret), userHandler.Update)
 		api.DELETE("/users/:id", userHandler.Delete)
+		api.POST("/login", userHandler.Login)
+		//api.POST("/activities/:id/register", middleware.JWTAuth(), regHandler.Register)
 	}
 
 	return r

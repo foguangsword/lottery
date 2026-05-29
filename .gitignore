@@ -36,3 +36,5 @@ backend/tmp/
 
 # ===== Docker (optional overrides) =====
 docker-compose.override.yml
+
+note.md
